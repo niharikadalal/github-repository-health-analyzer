@@ -2,7 +2,6 @@ from github import Github
 
 github_client = Github()
 
-
 def get_repository_info(repo_name):
 
     repo = github_client.get_repo(repo_name)
@@ -15,7 +14,26 @@ def get_repository_info(repo_name):
         license_name = repo.license.name
     except:
         license_name = "No License"
+    # README Detection
+    try:
+        repo.get_readme()
+        readme_present = True
+    except:
+        readme_present = False
 
+    # CONTRIBUTING.md Detection
+    try:
+        repo.get_contents("CONTRIBUTING.md")
+        contributing_present = True
+    except:
+        contributing_present = False
+
+    # SECURITY.md Detection
+    try:
+        repo.get_contents("SECURITY.md")
+        security_present = True
+    except:
+        security_present = False
     data = {
         "name": repo.name,
         "description": repo.description,
@@ -28,7 +46,10 @@ def get_repository_info(repo_name):
         "releases": releases,
         "license": license_name,
         "created_at": str(repo.created_at),
-        "updated_at": str(repo.updated_at)
+        "updated_at": str(repo.updated_at),
+        "readme_present": readme_present,
+        "contributing_present": contributing_present,
+        "security_present": security_present
     }
 
     return data
