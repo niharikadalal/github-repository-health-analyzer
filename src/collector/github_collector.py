@@ -1,6 +1,12 @@
 from github import Github
+from dotenv import load_dotenv
+import os
 
-github_client = Github()
+load_dotenv()
+
+github_client = Github(
+    os.getenv("GITHUB_TOKEN")
+)
 
 def get_repository_info(repo_name):
 

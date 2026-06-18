@@ -1,3 +1,4 @@
+
 from src.analyzer.activity_analyzer import calculate_activity_score
 from src.collector.github_collector import get_repository_info
 from src.analyzer.documentation_analyzer import calculate_documentation_score
