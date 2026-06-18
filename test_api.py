@@ -2,7 +2,7 @@ from src.analyzer.activity_analyzer import calculate_activity_score
 from src.collector.github_collector import get_repository_info
 from src.analyzer.documentation_analyzer import calculate_documentation_score
 from src.analyzer.activity_analyzer import calculate_activity_score
-
+from src.analyzer.community_analyzer import calculate_community_score
 repo_data = get_repository_info("pallets/flask")
 
 for key, value in repo_data.items():
@@ -16,4 +16,8 @@ print(
 print(
     "Activity Score:",
     calculate_activity_score(repo_data)
+)
+print(
+    "Community Score:",
+    calculate_community_score(repo_data)
 )
