@@ -1,5 +1,7 @@
+from src.analyzer.activity_analyzer import calculate_activity_score
 from src.collector.github_collector import get_repository_info
 from src.analyzer.documentation_analyzer import calculate_documentation_score
+from src.analyzer.activity_analyzer import calculate_activity_score
 
 repo_data = get_repository_info("pallets/flask")
 
@@ -10,4 +12,8 @@ print()
 print(
     "Documentation Score:",
     calculate_documentation_score(repo_data)
+)
+print(
+    "Activity Score:",
+    calculate_activity_score(repo_data)
 )
