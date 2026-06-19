@@ -18,6 +18,20 @@ from src.analyzer.security_analyzer import calculate_security_score
 
 from src.scoring.health_score import calculate_health_score
 
+def normalize_repo_input(repo_input):
+
+    repo_input = repo_input.strip()
+
+    if "github.com" in repo_input:
+
+        repo_input = repo_input.rstrip("/")
+
+        parts = repo_input.split("/")
+
+        return f"{parts[-2]}/{parts[-1]}"
+
+    return repo_input
+
 st.set_page_config(
     page_title="GitHub Repository Health Analyzer",
     layout="wide"
@@ -25,9 +39,9 @@ st.set_page_config(
 
 st.title("GitHub Repository Health Analyzer")
 
-repo_name = st.text_input(
-    "Enter Repository (owner/repo)",
-    placeholder="pallets/flask"
+repo_input = st.text_input(
+    "Repository URL or owner/repository",
+    placeholder="https://github.com/pallets/flask"
 )
 
 if st.button("Analyze Repository"):
@@ -37,7 +51,7 @@ if st.button("Analyze Repository"):
         model = joblib.load(
             "models/repository_health_model.pkl"
         )
-
+        repo_name = normalize_repo_input(repo_input)
         repo_data = get_repository_info(repo_name)
 
         documentation_score = calculate_documentation_score(
@@ -81,47 +95,92 @@ if st.button("Analyze Repository"):
 
         prediction = model.predict(features)[0]
 
-        st.subheader("Repository Information")
-
-        st.write(f"**Repository:** {repo_name}")
-        st.write(f"**Stars:** {repo_data['stars']}")
-        st.write(f"**Forks:** {repo_data['forks']}")
-        st.write(f"**Contributors:** {repo_data['contributors']}")
-
-        st.subheader("Health Metrics")
-
-        col1, col2 = st.columns(2)
-
-        with col1:
-            st.metric(
-                "Documentation Score",
-                documentation_score
-            )
-
-            st.metric(
-                "Activity Score",
-                activity_score
-            )
-
-        with col2:
-            st.metric(
-                "Community Score",
-                community_score
-            )
-
-            st.metric(
-                "Security Score",
-                security_score
-            )
-
-        st.metric(
-            "Overall Health Score",
-            health_score
+        overview_tab, metrics_tab, details_tab, recommendations_tab = st.tabs(
+            [
+                "Overview",
+                "Metrics",
+                "Repository Details",
+                "Recommendations"
+            ]
         )
 
-        st.success(
-            f"Predicted Health Category: {prediction}"
-        )
+        with overview_tab:
+
+            c1, c2, c3 = st.columns(3)
+
+            c1.metric("⭐ Stars", repo_data["stars"])
+            c2.metric("🍴 Forks", repo_data["forks"])
+            c3.metric("👥 Contributors", repo_data["contributors"])
+
+            st.metric("💖 Health Score", health_score)
+
+            if prediction == "Healthy":
+                st.success(f"Prediction: {prediction}")
+
+            elif prediction == "Moderately Healthy":
+                st.warning(f"Prediction: {prediction}")
+
+            else:
+                st.error(f"Prediction: {prediction}")
+
+        with metrics_tab:
+
+            st.write("Documentation")
+            st.progress(documentation_score / 100)
+
+            st.write("Activity")
+            st.progress(activity_score / 100)
+
+            st.write("Community")
+            st.progress(community_score / 100)
+
+            st.write("Security")
+            st.progress(security_score / 100)
+
+        with details_tab:
+
+            st.write("Repository:", repo_name)
+            st.write("Description:", repo_data["description"])
+            st.write("License:", repo_data["license"])
+            st.write("Watchers:", repo_data["watchers"])
+            st.write("Commits:", repo_data["commits"])
+            st.write("Releases:", repo_data["releases"])
+            st.write("Created:", repo_data["created_at"])
+            st.write("Updated:", repo_data["updated_at"])
+
+        with recommendations_tab:
+
+            recommendations = []
+
+            if documentation_score < 80:
+                recommendations.append(
+                    "Improve README and documentation."
+                )
+
+            if security_score < 80:
+                recommendations.append(
+                    "Add SECURITY.md and security guidelines."
+                )
+
+            if community_score < 80:
+                recommendations.append(
+                    "Add contribution guidelines."
+                )
+
+            if activity_score < 80:
+                recommendations.append(
+                    "Increase maintenance and release frequency."
+                )
+
+            if recommendations:
+
+                for rec in recommendations:
+                    st.write("✓", rec)
+
+            else:
+                st.success(
+                    "No major improvements suggested."
+                )
 
     except Exception as e:
 
