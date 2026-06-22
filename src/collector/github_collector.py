@@ -1,7 +1,7 @@
 from github import Github
 from dotenv import load_dotenv
 import os
-
+from datetime import datetime, timezone
 load_dotenv()
 
 github_client = Github(
@@ -31,18 +31,6 @@ def get_repository_info(repo_name):
 
     merged_prs = 0
 
-    try:
-
-        for pr in repo.get_pulls(
-            state="closed"
-        ):
-
-            if pr.merged_at:
-                merged_prs += 1
-
-    except Exception:
-
-        merged_prs = 0
 
     # License
 
@@ -80,20 +68,40 @@ def get_repository_info(repo_name):
 
         contributing_present = False
 
+    # CODE_OF_CONDUCT.md Detection
+
+    try:
+
+        repo.get_contents(
+            "CODE_OF_CONDUCT.md"
+    )
+
+        code_of_conduct_present = True
+
+    except Exception:
+
+        code_of_conduct_present = False
+
+
     # SECURITY.md Detection
 
     try:
 
         repo.get_contents(
             "SECURITY.md"
-        )
+    )
 
         security_present = True
 
     except Exception:
 
         security_present = False
-
+        
+    repo_age_days = (
+        datetime.now(timezone.utc)
+        - repo.created_at
+    ).days
+    
     data = {
 
         "name": repo.name,
@@ -134,7 +142,11 @@ def get_repository_info(repo_name):
 
         "contributing_present": contributing_present,
 
-        "security_present": security_present
+        "security_present": security_present,
+        
+        "repo_age_days": repo_age_days,
+
+        "code_of_conduct_present": code_of_conduct_present,
     }
 
     return data
