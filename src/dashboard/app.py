@@ -17,7 +17,10 @@ from src.analyzer.documentation_analyzer import calculate_documentation_score
 from src.analyzer.activity_analyzer import calculate_activity_score
 from src.analyzer.community_analyzer import calculate_community_score
 from src.analyzer.security_analyzer import calculate_security_score
-
+from src.analyzer.maturity_analyzer import (
+    calculate_maturity_score,
+    classify_repository_maturity
+)
 from src.scoring.health_score import calculate_health_score
 
 
@@ -84,7 +87,13 @@ if st.button("Analyze Repository"):
             community_score,
             security_score
         )
+        maturity_score = calculate_maturity_score(
+            repo_data
+        )
 
+        maturity_stage = classify_repository_maturity(
+            maturity_score
+        )
         features = pd.DataFrame([
             {
                 "stars": repo_data["stars"],
@@ -134,16 +143,17 @@ if st.button("Analyze Repository"):
             ascending=False
         )
 
-        summary_tab, metrics_tab, risk_tab, recommendations_tab, insights_tab, details_tab = st.tabs(
-            [
-                "📊 Summary",
-                "📈 Metrics",
-                "🛡 Risk Analysis",
-                "💡 Recommendations",
-                "🔍 Model Insights",
-                "📁 Repository Details"
-            ]
-        )
+        summary_tab, metrics_tab, maturity_tab, risk_tab, recommendations_tab, insights_tab, details_tab = st.tabs(
+    [
+        "📊 Summary",
+        "📈 Metrics",
+        "🏆 Maturity",
+        "🛡 Risk Analysis",
+        "💡 Recommendations",
+        "🔍 Model Insights",
+        "📁 Repository Details"
+    ]
+)
 
         with summary_tab:
 
@@ -238,7 +248,7 @@ if st.button("Analyze Repository"):
                 polar=dict(
                     radialaxis=dict(
                         visible=True,
-                        range=[0, 100]
+                            range=[0, 100]
                     )
                 ),
                 showlegend=False
@@ -246,7 +256,7 @@ if st.button("Analyze Repository"):
 
             st.plotly_chart(
                 fig,
-                use_container_width=True
+                    use_container_width=True
             )
 
             metrics_df = pd.DataFrame(
@@ -270,6 +280,51 @@ if st.button("Analyze Repository"):
                 metrics_df,
                 use_container_width=True
             )
+
+        with maturity_tab:
+
+                    st.subheader(
+                "Repository Maturity Assessment"
+            )
+
+                    st.metric(
+                "🏆 Maturity Score",
+                maturity_score
+            )
+
+                    if maturity_stage == "Mature Project":
+
+                        st.success(
+                            maturity_stage
+                        )
+
+                    elif maturity_stage == "Growing Project":
+
+                        st.warning(
+                            maturity_stage
+                        )
+
+                    else:
+
+                        st.info(
+                            maturity_stage
+                        )
+
+                    st.write(
+                        f"Repository Age: {repo_data['repo_age_days']} days"
+                    )
+
+                    st.write(
+                        f"Contributors: {repo_data['contributors']}"
+                    )
+
+                    st.write(
+                        f"Commits: {repo_data['commits']}"
+                    )
+
+                    st.write(
+                        f"Releases: {repo_data['releases']}"
+                    )
 
         with risk_tab:
 
