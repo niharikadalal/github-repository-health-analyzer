@@ -5,9 +5,11 @@ project_root = Path(__file__).resolve().parents[2]
 
 if str(project_root) not in sys.path:
     sys.path.append(str(project_root))
+
 import streamlit as st
 import pandas as pd
 import joblib
+import plotly.graph_objects as go
 
 from src.collector.github_collector import get_repository_info
 
@@ -17,6 +19,7 @@ from src.analyzer.community_analyzer import calculate_community_score
 from src.analyzer.security_analyzer import calculate_security_score
 
 from src.scoring.health_score import calculate_health_score
+
 
 def normalize_repo_input(repo_input):
 
@@ -31,6 +34,7 @@ def normalize_repo_input(repo_input):
         return f"{parts[-2]}/{parts[-1]}"
 
     return repo_input
+
 
 st.set_page_config(
     page_title="GitHub Repository Health Analyzer",
@@ -51,8 +55,12 @@ if st.button("Analyze Repository"):
         model = joblib.load(
             "models/repository_health_model.pkl"
         )
+
         repo_name = normalize_repo_input(repo_input)
-        repo_data = get_repository_info(repo_name)
+
+        repo_data = get_repository_info(
+            repo_name
+        )
 
         documentation_score = calculate_documentation_score(
             repo_data
@@ -95,58 +103,208 @@ if st.button("Analyze Repository"):
 
         prediction = model.predict(features)[0]
 
-        overview_tab, metrics_tab, details_tab, recommendations_tab = st.tabs(
+        probabilities = model.predict_proba(features)[0]
+
+        confidence = round(
+            max(probabilities) * 100,
+            2
+        )
+
+        feature_importance = pd.DataFrame(
+            {
+                "Feature": [
+                    "Stars",
+                    "Forks",
+                    "Watchers",
+                    "Contributors",
+                    "Commits",
+                    "Releases",
+                    "Open Issues",
+                    "Documentation",
+                    "Activity",
+                    "Community",
+                    "Security"
+                ],
+                "Importance": model.feature_importances_
+            }
+        )
+
+        feature_importance = feature_importance.sort_values(
+            by="Importance",
+            ascending=False
+        )
+
+        summary_tab, metrics_tab, risk_tab, recommendations_tab, insights_tab, details_tab = st.tabs(
             [
-                "Overview",
-                "Metrics",
-                "Repository Details",
-                "Recommendations"
+                "📊 Summary",
+                "📈 Metrics",
+                "🛡 Risk Analysis",
+                "💡 Recommendations",
+                "🔍 Model Insights",
+                "📁 Repository Details"
             ]
         )
 
-        with overview_tab:
+        with summary_tab:
 
-            c1, c2, c3 = st.columns(3)
+            left, right = st.columns([2, 1])
 
-            c1.metric("⭐ Stars", repo_data["stars"])
-            c2.metric("🍴 Forks", repo_data["forks"])
-            c3.metric("👥 Contributors", repo_data["contributors"])
+            with left:
 
-            st.metric("💖 Health Score", health_score)
+                st.subheader(
+                    f"Repository: {repo_name}"
+                )
 
-            if prediction == "Healthy":
-                st.success(f"Prediction: {prediction}")
+                score_col, conf_col = st.columns(2)
 
-            elif prediction == "Moderately Healthy":
-                st.warning(f"Prediction: {prediction}")
+                score_col.metric(
+                    "💖 Health Score",
+                    round(health_score, 2)
+                )
 
-            else:
-                st.error(f"Prediction: {prediction}")
+                conf_col.metric(
+                    "🎯 Confidence",
+                    f"{confidence}%"
+                )
+
+                if prediction == "Healthy":
+
+                    st.success(
+                        f"Prediction: {prediction}"
+                    )
+
+                elif prediction == "Moderately Healthy":
+
+                    st.warning(
+                        f"Prediction: {prediction}"
+                    )
+
+                else:
+
+                    st.error(
+                        f"Prediction: {prediction}"
+                    )
+
+                st.link_button(
+                    "Open Repository",
+                    f"https://github.com/{repo_name}"
+                )
+
+            with right:
+
+                st.metric(
+                    "⭐ Stars",
+                    repo_data["stars"]
+                )
+
+                st.metric(
+                    "🍴 Forks",
+                    repo_data["forks"]
+                )
+
+                st.metric(
+                    "👥 Contributors",
+                    repo_data["contributors"]
+                )
 
         with metrics_tab:
 
-            st.write("Documentation")
-            st.progress(documentation_score / 100)
+            categories = [
+                "Documentation",
+                "Activity",
+                "Community",
+                "Security"
+            ]
 
-            st.write("Activity")
-            st.progress(activity_score / 100)
+            values = [
+                documentation_score,
+                activity_score,
+                community_score,
+                security_score
+            ]
 
-            st.write("Community")
-            st.progress(community_score / 100)
+            fig = go.Figure()
 
-            st.write("Security")
-            st.progress(security_score / 100)
+            fig.add_trace(
+                go.Scatterpolar(
+                    r=values,
+                    theta=categories,
+                    fill="toself",
+                    name="Repository Health"
+                )
+            )
 
-        with details_tab:
+            fig.update_layout(
+                polar=dict(
+                    radialaxis=dict(
+                        visible=True,
+                        range=[0, 100]
+                    )
+                ),
+                showlegend=False
+            )
 
-            st.write("Repository:", repo_name)
-            st.write("Description:", repo_data["description"])
-            st.write("License:", repo_data["license"])
-            st.write("Watchers:", repo_data["watchers"])
-            st.write("Commits:", repo_data["commits"])
-            st.write("Releases:", repo_data["releases"])
-            st.write("Created:", repo_data["created_at"])
-            st.write("Updated:", repo_data["updated_at"])
+            st.plotly_chart(
+                fig,
+                use_container_width=True
+            )
+
+            metrics_df = pd.DataFrame(
+                {
+                    "Metric": [
+                        "Documentation",
+                        "Activity",
+                        "Community",
+                        "Security"
+                    ],
+                    "Score": [
+                        documentation_score,
+                        activity_score,
+                        community_score,
+                        security_score
+                    ]
+                }
+            )
+
+            st.dataframe(
+                metrics_df,
+                use_container_width=True
+            )
+
+        with risk_tab:
+
+            risks = []
+
+            if documentation_score < 80:
+                risks.append(
+                    "Documentation quality needs improvement."
+                )
+
+            if security_score < 80:
+                risks.append(
+                    "Security practices appear weak."
+                )
+
+            if community_score < 80:
+                risks.append(
+                    "Community engagement could be improved."
+                )
+
+            if activity_score < 80:
+                risks.append(
+                    "Repository activity is low."
+                )
+
+            if risks:
+
+                for risk in risks:
+                    st.warning(risk)
+
+            else:
+
+                st.success(
+                    "No major risks detected."
+                )
 
         with recommendations_tab:
 
@@ -175,13 +333,81 @@ if st.button("Analyze Repository"):
             if recommendations:
 
                 for rec in recommendations:
-                    st.write("✓", rec)
+                    st.write(f"✓ {rec}")
 
             else:
+
                 st.success(
                     "No major improvements suggested."
                 )
 
+        with insights_tab:
+
+            st.subheader(
+                "Model Feature Importance"
+            )
+
+            st.bar_chart(
+                feature_importance.set_index(
+                    "Feature"
+                )
+            )
+
+            st.dataframe(
+                feature_importance,
+                use_container_width=True
+            )
+
+        with details_tab:
+
+            left, right = st.columns(2)
+
+            with left:
+
+                st.write(
+                    "**Repository:**",
+                    repo_name
+                )
+
+                st.write(
+                    "**Description:**",
+                    repo_data["description"]
+                )
+
+                st.write(
+                    "**License:**",
+                    repo_data["license"]
+                )
+
+            with right:
+
+                st.write(
+                    "**Watchers:**",
+                    repo_data["watchers"]
+                )
+
+                st.write(
+                    "**Commits:**",
+                    repo_data["commits"]
+                )
+
+                st.write(
+                    "**Releases:**",
+                    repo_data["releases"]
+                )
+
+                st.write(
+                    "**Created:**",
+                    repo_data["created_at"]
+                )
+
+                st.write(
+                    "**Updated:**",
+                    repo_data["updated_at"]
+                )
+
     except Exception as e:
 
-        st.error(str(e))
+        st.error(
+            f"Error analyzing repository: {str(e)}"
+        )
