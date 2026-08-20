@@ -6,7 +6,7 @@ from src.analyzer.activity_analyzer import calculate_activity_score
 from src.analyzer.community_analyzer import calculate_community_score
 from src.analyzer.security_analyzer import calculate_security_score
 from src.scoring.health_score import calculate_health_score
-repo_data = get_repository_info("pallets/flask")
+repo_data = get_repository_info("996icu/996.ICU")
 
 for key, value in repo_data.items():
     print(f"{key}: {value}")

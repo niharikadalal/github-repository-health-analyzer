@@ -2,6 +2,7 @@ from github import Github
 from dotenv import load_dotenv
 import os
 from datetime import datetime, timezone
+
 load_dotenv()
 
 github_client = Github(
@@ -9,17 +10,39 @@ github_client = Github(
 )
 
 
+def check_file(repo, path):
+    """Check whether a file exists in the repository."""
+    try:
+        repo.get_contents(path)
+        return True
+    except Exception:
+        return False
+
+
+def check_directory(repo, path):
+    """Check whether a directory exists in the repository."""
+    try:
+        contents = repo.get_contents(path)
+        return isinstance(contents, list)
+    except Exception:
+        return False
+
+
 def get_repository_info(repo_name):
 
     repo = github_client.get_repo(repo_name)
 
+    # -------------------------
     # Basic Statistics
+    # -------------------------
 
     contributors = repo.get_contributors().totalCount
     commits = repo.get_commits().totalCount
     releases = repo.get_releases().totalCount
 
+    # -------------------------
     # Pull Requests
+    # -------------------------
 
     open_prs = repo.get_pulls(
         state="open"
@@ -31,77 +54,111 @@ def get_repository_info(repo_name):
 
     merged_prs = 0
 
-
+    # -------------------------
     # License
+    # -------------------------
 
     try:
-
         license_name = repo.license.name
-
     except Exception:
-
         license_name = "No License"
 
-    # README Detection
+    # -------------------------
+    # Documentation
+    # -------------------------
+
+    readme_present = check_file(
+        repo,
+        "README.md"
+    )
+
+    contributing_present = check_file(
+        repo,
+        "CONTRIBUTING.md"
+    )
+
+    docs_present = check_directory(
+        repo,
+        "docs"
+    )
+
+    examples_present = check_directory(
+        repo,
+        "examples"
+    )
+
+    # -------------------------
+    # Security / Governance
+    # -------------------------
+
+    security_present = check_file(
+        repo,
+        "SECURITY.md"
+    )
+
+    code_of_conduct_present = check_file(
+        repo,
+        "CODE_OF_CONDUCT.md"
+    )
+
+    dependabot_present = check_file(
+        repo,
+        ".github/dependabot.yml"
+    )
+
+    # -------------------------
+    # CodeQL
+    # -------------------------
+
+    codeql_present = False
 
     try:
 
-        repo.get_readme()
-
-        readme_present = True
-
-    except Exception:
-
-        readme_present = False
-
-    # CONTRIBUTING.md Detection
-
-    try:
-
-        repo.get_contents(
-            "CONTRIBUTING.md"
+        workflows = repo.get_contents(
+            ".github/workflows"
         )
 
-        contributing_present = True
+        for workflow in workflows:
+
+            if "codeql" in workflow.name.lower():
+
+                codeql_present = True
+                break
 
     except Exception:
 
-        contributing_present = False
+        codeql_present = False
 
-    # CODE_OF_CONDUCT.md Detection
+    # -------------------------
+    # Repository Age
+    # -------------------------
 
-    try:
-
-        repo.get_contents(
-            "CODE_OF_CONDUCT.md"
-    )
-
-        code_of_conduct_present = True
-
-    except Exception:
-
-        code_of_conduct_present = False
-
-
-    # SECURITY.md Detection
-
-    try:
-
-        repo.get_contents(
-            "SECURITY.md"
-    )
-
-        security_present = True
-
-    except Exception:
-
-        security_present = False
-        
     repo_age_days = (
         datetime.now(timezone.utc)
         - repo.created_at
     ).days
-    
+
+    # -------------------------
+    # Last Commit Age
+    # -------------------------
+
+    try:
+
+        last_commit = repo.get_commits()[0]
+
+        last_commit_days = (
+            datetime.now(timezone.utc)
+            - last_commit.commit.author.date
+        ).days
+
+    except Exception:
+
+        last_commit_days = None
+
+    # -------------------------
+    # Return Data
+    # -------------------------
+
     data = {
 
         "name": repo.name,
@@ -143,10 +200,24 @@ def get_repository_info(repo_name):
         "contributing_present": contributing_present,
 
         "security_present": security_present,
-        
+
         "repo_age_days": repo_age_days,
 
-        "code_of_conduct_present": code_of_conduct_present,
+        "code_of_conduct_present":
+            code_of_conduct_present,
+
+        "docs_present": docs_present,
+
+        "examples_present": examples_present,
+
+        "dependabot_present":
+            dependabot_present,
+
+        "codeql_present":
+            codeql_present,
+
+        "last_commit_days":
+            last_commit_days,
     }
 
     return data

@@ -21,10 +21,22 @@ X = df[
         "commits",
         "releases",
         "open_issues",
+        "open_prs",
+        "closed_prs",
+        "repo_age_days",
+        "last_commit_days",
         "documentation_score",
         "activity_score",
         "community_score",
-        "security_score"
+        "security_score",
+        "readme_present",
+        "contributing_present",
+        "docs_present",
+        "examples_present",
+        "security_present",
+        "dependabot_present",
+        "codeql_present",
+        "code_of_conduct_present"
     ]
 ]
 
